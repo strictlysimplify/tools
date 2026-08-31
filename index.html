@@ -1,445 +1,918 @@
-<script type="text/javascript">
-  var gk_isXlsx = false;
-  var gk_xlsxFileLookup = {};
-  var gk_fileData = {};
-  function filledCell(cell) {
-    return cell !== "" && cell != null;
-  }
-  function loadFileData(filename) {
-    if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-      try {
-        var workbook = XLSX.read(gk_fileData[filename], { type: "base64" });
-        var firstSheetName = workbook.SheetNames[0];
-        var worksheet = workbook.Sheets[firstSheetName];
-
-        var jsonData = XLSX.utils.sheet_to_json(worksheet, {
-          header: 1,
-          blankrows: false,
-          defval: "",
-        });
-        var filteredData = jsonData.filter((row) => row.some(filledCell));
-
-        var headerRowIndex = filteredData.findIndex(
-          (row, index) =>
-            row.filter(filledCell).length >=
-            filteredData[index + 1]?.filter(filledCell).length
-        );
-
-        if (headerRowIndex === -1 || headerRowIndex > 25) {
-          headerRowIndex = 0;
-        }
-
-        var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
-        csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-        return csv;
-      } catch (e) {
-        console.error(e);
-        return "";
-      }
-    }
-    return gk_fileData[filename] || "";
-  }
-</script>
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@strictlysimplify</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      body {
-        font-family: "Helvetica Neue", Arial, sans-serif;
-        background: #1a1a1a;
-        color: #d4d4d4;
-        position: relative;
-        overflow: hidden;
-      }
-      .square {
-        position: absolute;
-        background: rgba(255, 255, 255, 0.1);
-        pointer-events: none;
-        animation: rise 10s linear infinite, rotate 5s linear infinite;
-        top: 100vh;
-        left: 0;
-      }
-      @keyframes rise {
-        0% {
-          top: 100vh;
-          opacity: 0.1;
-        }
-        50% {
-          opacity: 0.3;
-        }
-        100% {
-          top: -10vh;
-          opacity: 0.1;
-        }
-      }
-      @keyframes rotate {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-      #splash {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: #1a1a1a;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10;
-        cursor: pointer;
-        opacity: 1;
-        transition: opacity 1s ease-in-out;
-      }
-      #content {
-        opacity: 0;
-        transition: opacity 1s ease-in-out;
-      }
-      .letter {
-        display: inline-block;
-        animation: move 2s ease-in-out infinite;
-      }
-      .letter:nth-child(1) {
-        animation-delay: 0s;
-      }
-      .letter:nth-child(2) {
-        animation-delay: 0.1s;
-      }
-      .letter:nth-child(3) {
-        animation-delay: 0.2s;
-      }
-      .letter:nth-child(4) {
-        animation-delay: 0.3s;
-      }
-      .letter:nth-child(5) {
-        animation-delay: 0.4s;
-      }
-      .letter:nth-child(6) {
-        animation-delay: 0.5s;
-      }
-      .letter:nth-child(7) {
-        animation-delay: 0.6s;
-      }
-      .letter:nth-child(8) {
-        animation-delay: 0.7s;
-      }
-      @keyframes move {
-        0% {
-          transform: translate(0, 0);
-        }
-        25% {
-          transform: translate(5px, -5px);
-        }
-        50% {
-          transform: translate(0, 5px);
-        }
-        75% {
-          transform: translate(-5px, -5px);
-        }
-        100% {
-          transform: translate(0, 0);
-        }
-      }
-      .hover-tooltip {
-        position: relative;
-      }
-      .hover-tooltip::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #333;
-        color: #d4d4d4;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 14px;
-        white-space: nowrap;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        pointer-events: none;
-      }
-      .hover-tooltip:hover::after {
-        opacity: 1;
-      }
-      .underline-anim {
-        position: relative;
-        display: inline-block;
-      }
-      .underline-anim::after {
-        content: "";
-        position: absolute;
-        width: 0;
-        height: 2px;
-        bottom: -4px;
-        left: 0;
-        background-color: #d4d4d4;
-        transition: width 0.5s ease;
-      }
-      .underline-anim:hover::after {
-        width: 100%;
-      }
-      .box:hover .underline-anim::after,
-      .section-box:hover h3.underline-anim::after {
-        width: 100%;
-      }
-      .box {
-        background: #2a2a2a;
-        border: 1px solid #444;
-        border-radius: 8px;
-        padding: 8px 12px;
-        margin-bottom: 8px;
-      }
-      .section-box {
-        background: none;
-        border: none;
-        padding: 16px;
-        margin-bottom: 16px;
-      }
-      #muteBtn {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 40px;
-        height: 40px;
-        background: #2a2a2a;
-        border: 2px solid #d4d4d4;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 20;
-        transition: transform 0.3s ease;
-      }
-      #muteBtn:hover {
-        background: #3a3a3a;
-        transform: scale(1.1);
-      }
-      .section-box h3 {
-        color: #d4d4d4;
-      }
-      .box p {
-        font-size: 1.1rem;
-        line-height: 1.2;
-      }
-      .box p span {
-        font-size: 0.9rem;
-      }
-      .discord-name-box,
-      .discord-label-box {
-        display: inline-block;
-        background: #333;
-        padding: 2px 6px;
-        border-radius: 4px;
-        margin-right: 4px;
-      }
-      #muteIcon {
-        width: 20px;
-        height: 20px;
-        filter: brightness(0) invert(1);
-      }
-    </style>
-  </head>
-  <body
-    class="flex flex-col items-center justify-center min-h-screen text-center p-4"
-  >
-    <div id="splash" class="text-xl text-[#d4d4d4]">[ click to enter ]</div>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roblox Text &amp; Audio Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Bangers&family=Fredoka+One&family=Josefin+Sans&family=Luckiest+Guy&family=Merriweather&family=Michroma&family=Montserrat&family=Oswald&family=Patrick+Hand&family=Permanent+Marker&family=Press+Start+2P&family=Roboto&family=Roboto+Mono&family=Roboto+Condensed&family=Special+Elite&family=Titillium+Web&family=Ubuntu&family=Creepster&family=Indie+Flower&family=Amatic+SC&family=Kalam&family=Comic+Neue:wght@700&family=Arimo&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14151a;
+    --paper:#f6f4ee;
+    --panel:#ffffff;
+    --line:#14151a;
+    --accent:#e0361d;
+    --accent-ink:#ffffff;
+    --grass:#4c9a2a;
+    --grass-dark:#3a7a20;
+    --dirt:#8a5a34;
+    --sky:#6fc6e6;
+    --muted:#68655c;
+    --shadow: 3px 3px 0 var(--line);
+    --shadow-sm: 2px 2px 0 var(--line);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:
+      linear-gradient(var(--paper) 0, var(--paper) 100%),
+      repeating-linear-gradient(0deg, rgba(20,21,26,0.035) 0 1px, transparent 1px 26px),
+      repeating-linear-gradient(90deg, rgba(20,21,26,0.035) 0 1px, transparent 1px 26px);
+    color:var(--ink);
+    font-family:'Inter', system-ui, sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:36px 24px 80px;}
+  .tabs{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;}
+  .tabBtn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+    letter-spacing:.02em;
+    font-weight:600;
+    padding:11px 18px;
+    border:2px solid var(--line);
+    background:var(--panel);
+    box-shadow:var(--shadow-sm);
+    cursor:pointer;
+    color:var(--ink);
+  }
+  .tabBtn:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--line);}
+  .tabBtn.active{background:var(--ink);color:var(--paper);}
+  .page{
+    display:none;
+    opacity:0;
+    transform:translateY(10px);
+  }
+  .page.active{
+    display:block;
+    animation:tabIn .28s ease forwards;
+  }
+  @keyframes tabIn{
+    from{opacity:0;transform:translateY(10px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  header{margin-bottom:32px;}
+  .kicker{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px; letter-spacing:.02em;
+    color:var(--ink);
+    background:var(--paper);
+    border:2px solid var(--line);
+    padding:4px 10px 4px 8px;
+    box-shadow:var(--shadow-sm);
+    margin-bottom:18px;
+  }
+  .kicker .dot{width:8px;height:8px;background:var(--grass);border:2px solid var(--line);}
+  .kicker .dot.blue{background:var(--sky);}
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:clamp(34px, 5vw, 54px);
+    line-height:1;
+    margin:0 0 14px;
+    letter-spacing:-0.01em;
+  }
+  h1 .cube{
+    display:inline-block;
+    color:var(--accent-ink);
+    background:var(--accent);
+    padding:0 10px;
+    border:3px solid var(--line);
+    box-shadow:var(--shadow);
+    transform:rotate(-1deg);
+  }
+  header p{
+    max-width:56ch;
+    font-size:16px;
+    line-height:1.55;
+    color:var(--muted);
+    margin:0;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1.15fr 1fr;
+    gap:22px;
+    align-items:start;
+  }
+  @media (max-width:920px){ .grid{grid-template-columns:1fr;} }
+  .single{max-width:640px;}
+  .panel{
+    background:var(--panel);
+    border:3px solid var(--line);
+    box-shadow:var(--shadow);
+    padding:22px;
+  }
+  .panel + .panel{margin-top:22px;}
+  .panel-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:.06em;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .panel h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:20px;
+    margin:0 0 6px;
+  }
+  .panel .desc{
+    font-size:13.5px;
+    color:var(--muted);
+    line-height:1.5;
+    margin:0 0 16px;
+  }
+  .toolbar{
+    display:flex;flex-wrap:wrap;gap:8px;
+    margin-bottom:14px;
+    padding-bottom:14px;
+    border-bottom:2px dashed #d8d4c8;
+  }
+  button{
+    font-family:'Space Grotesk', sans-serif;
+    cursor:pointer;
+  }
+  .tbtn{
+    min-width:38px;height:38px;
+    border:2px solid var(--line);
+    background:var(--panel);
+    font-size:15px;
+    font-weight:700;
+    box-shadow:var(--shadow-sm);
+    transition:transform .06s ease;
+    display:flex;align-items:center;justify-content:center;
+    padding:0 10px;
+  }
+  .tbtn:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--line);}
+  .tbtn.active{background:var(--ink);color:var(--paper);}
+  .tbtn.italic{font-style:italic;font-family:'Space Grotesk',sans-serif;}
+  .tbtn.underline{text-decoration:underline;}
+  .tbtn.strike{text-decoration:line-through;}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .row label{font-size:12.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;min-width:64px;}
+  select, input[type="number"], input[type="text"]{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    border:2px solid var(--line);
+    background:var(--panel);
+    padding:7px 9px;
+  }
+  input[type="color"]{
+    width:38px;height:38px;border:2px solid var(--line);padding:0;background:none;cursor:pointer;
+  }
+  .miniBtn{
+    border:2px solid var(--line);
+    background:var(--panel);
+    font-size:12.5px;
+    font-weight:600;
+    padding:7px 12px;
+    box-shadow:var(--shadow-sm);
+  }
+  .miniBtn:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--line);}
+  .miniBtn.primary{background:var(--accent);color:var(--accent-ink);}
+  .miniBtn.block{width:100%;padding:13px;font-size:15px;font-weight:700;}
+  #editor{
+    min-height:170px;
+    border:2px solid var(--line);
+    background:#fdfcf9;
+    padding:14px 16px;
+    font-size:16px;
+    line-height:1.6;
+    outline:none;
+  }
+  #editor:empty:before{
+    content:attr(data-placeholder);
+    color:#a9a498;
+  }
+  .status{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-top:10px;font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;
+  }
+  .swatches{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;}
+  .swatch{
+    width:26px;height:26px;border:2px solid var(--line);cursor:pointer;
+  }
+  .swatch-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+  .stage{
+    position:relative;
+    height:220px;
+    border:2px solid var(--line);
+    overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:12px;
+  }
+  .stage .badge{
+    position:absolute;top:8px;left:10px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff;
+    background:rgba(0,0,0,.45); padding:2px 7px; letter-spacing:.04em;
+  }
+  .stage .badge.right{left:auto;right:10px;}
+  .stage-text{
+    position:relative;z-index:2;
+    text-align:center;
+    color:#fff;
+    text-shadow:0 2px 0 rgba(0,0,0,.55), 0 0 14px rgba(0,0,0,.25);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:26px;
+    padding:0 16px;
+    word-break:break-word;
+    max-width:90%;
+  }
+  .stage-text:empty:before{content:"Your text will appear here";opacity:.7;font-size:18px;font-family:'Inter',sans-serif;}
+  .bg-bright{background:linear-gradient(#7fd6f2,#bdeaa4 62%,#5fae3a 62%);}
+  .bg-bright:after{content:"";position:absolute;inset:0;background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 24px, transparent 24px 48px) bottom/100% 40% no-repeat;}
+  .bg-snow{background:linear-gradient(#c9d9ea,#eef3f8 55%,#ffffff 55%);}
+  .bg-snow:after{content:"";position:absolute;inset:0;background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.04) 0 20px, transparent 20px 40px) bottom/100% 45% no-repeat;}
+  .bg-night{background:linear-gradient(#141a3d,#2a2160 55%,#100a26 55%);}
+  .bg-night:after{content:"";position:absolute;inset:0;background:
+    radial-gradient(2px 2px at 20% 20%, #fff, transparent),
+    radial-gradient(2px 2px at 70% 15%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 40% 35%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 85% 40%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 55% 10%, #fff, transparent);}
+  .bg-nature{background:linear-gradient(#bfe3c6,#e8dfc2 50%,#c9a86b 50%);}
+  .bg-nature:after{content:"";position:absolute;inset:0;background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 18px, transparent 18px 36px) bottom/100% 50% no-repeat;}
+  .bg-black{background:#0c0c0e;}
+  .stage-swatches{display:flex;gap:8px;flex-wrap:wrap;}
+  .stageBtn{
+    width:42px;height:30px;border:2px solid var(--line);cursor:pointer;position:relative;
+  }
+  .stageBtn.selected{outline:3px solid var(--accent);outline-offset:2px;}
+  .stageBtn.sw-bright{background:linear-gradient(#7fd6f2,#5fae3a 60%);}
+  .stageBtn.sw-snow{background:linear-gradient(#c9d9ea,#fff 60%);}
+  .stageBtn.sw-night{background:linear-gradient(#141a3d,#100a26 60%);}
+  .stageBtn.sw-nature{background:linear-gradient(#bfe3c6,#c9a86b 60%);}
+  .stageBtn.sw-black{background:#0c0c0e;}
+  .stage-label-row{display:flex;justify-content:space-between;align-items:center;margin-top:4px;}
+  #output{
+    width:100%;
+    min-height:110px;
+    border:2px solid var(--line);
+    background:#fdfcf9;
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    line-height:1.55;
+    padding:12px 14px;
+    resize:vertical;
+    color:var(--ink);
+  }
+  .output-actions{display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+  .copied-note{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--grass-dark);opacity:0;transition:opacity .2s;}
+  .copied-note.show{opacity:1;}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.4;}
+  .av-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:6px;}
+  @media (max-width:520px){ .av-row{grid-template-columns:1fr;} }
+  .field label{
+    display:block;font-family:'JetBrains Mono',monospace;
+    font-size:11px;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;
+  }
+  .field input{width:100%;font-size:15px;padding:10px 12px;}
+  .field .hint{margin-top:5px;margin-bottom:0;}
+  .avwave{display:flex;align-items:flex-end;gap:3px;height:44px;margin:20px 0 18px;}
+  .avwave .bar{flex:1;background:#e3ddd0;border:1px solid var(--line);}
+  .avwave .bar.active{background:var(--accent);}
+  .av-error{
+    margin-top:14px;font-size:13px;color:#a8291a;display:none;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .av-error.show{display:block;}
+  .av-result{display:none;margin-top:4px;}
+  .av-result.show{display:block;}
+  .av-result .value{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700;
+    font-size:42px;
+    color:var(--accent);
+    line-height:1;
+    display:flex;align-items:baseline;gap:8px;
+    margin-bottom:10px;
+  }
+  .av-result .value .unit{font-size:16px;color:var(--muted);font-weight:500;}
+  .av-result .explain{font-size:13.5px;color:var(--muted);line-height:1.55;}
+  .av-result .explain code{
+    background:#f1efe6;color:var(--accent);
+    border:1px solid var(--line);
+    padding:1px 6px;font-family:'JetBrains Mono',monospace;font-size:12.5px;
+  }
+  ::selection{background:#14151a;color:#f6f4ee;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs">
+    <button class="tabBtn active" data-tab="composer">Rich Text Composer</button>
+    <button class="tabBtn" data-tab="audio">Roblox Audio Bypass</button>
+  </div>
 
-    <div id="content" class="max-w-2xl mx-auto">
-      <h1
-        class="text-6xl md:text-8xl font-bold text-[#d4d4d4] mb-2 underline-anim"
-      >
-        <span class="letter">s</span><span class="letter">i</span
-        ><span class="letter">m</span><span class="letter">p</span
-        ><span class="letter">l</span><span class="letter">i</span
-        ><span class="letter">f</span><span class="letter">y</span>
-      </h1>
-      <p class="text-lg md:text-xl text-[#a1a1a1] mb-6">
-        15 // roblox developer
-      </p>
-
-      <div class="box section-box">
-        <h2 class="text-2xl font-semibold text-[#d4d4d4] mb-4 underline-anim">
-          about me
-        </h2>
-        <p class="text-lg text-[#d4d4d4] mb-6">
-          Hey, I’m Simplify. I specialize in roblox development with focus on
-          Lua, Luau, and other things like UI. I started at the age of 8 or 9
-          and haven’t stopped since.
-        </p>
-
-        <div class="flex flex-wrap justify-center gap-2 mb-8">
-          <span
-            class="px-4 py-2 bg-[#333] text-[#d4d4d4] rounded-lg hover-tooltip"
-            data-tooltip="Lua"
-            >Lua</span
-          >
-          <span
-            class="px-4 py-2 bg-[#333] text-[#d4d4d4] rounded-lg hover-tooltip"
-            data-tooltip="Luau"
-            >Luau</span
-          >
+  <section class="page active" id="page-composer">
+    <header>
+      <span class="kicker"><span class="dot"></span>TOOL 01 · RUNS IN YOUR BROWSER</span>
+      <h1>Rich Text <span class="cube">Composer</span></h1>
+      <p>Format your text with bolding, italics, underline, strikethrough, color and size — then copy out ready-to-paste Roblox RichText markup. No manual tag-writing required.</p>
+    </header>
+    <div class="grid">
+      <div class="col-left">
+        <div class="panel">
+          <div class="panel-label">WRITE &amp; FORMAT</div>
+          <h2>Select text, then apply a style</h2>
+          <p class="desc">Type below, highlight any letters or words with your mouse or keyboard, then use the toolbar to format the selection.</p>
+          <div class="toolbar">
+            <button class="tbtn" id="btnBold" title="Bold"><b>B</b></button>
+            <button class="tbtn italic" id="btnItalic" title="Italic">I</button>
+            <button class="tbtn underline" id="btnUnderline" title="Underline">U</button>
+            <button class="tbtn strike" id="btnStrike" title="Strikethrough">S</button>
+          </div>
+          <div class="row">
+            <label>FONT</label>
+            <select id="fontSelect">
+              <option value="">— pick a face —</option>
+              <option value="Source Sans Pro">Source Sans Pro (default)</option>
+              <option value="Builder Sans">Builder Sans</option>
+              <option value="Arimo">Arimo</option>
+              <option value="Roboto">Roboto</option>
+              <option value="Roboto Condensed">Roboto Condensed</option>
+              <option value="Roboto Mono">Roboto Mono</option>
+              <option value="Montserrat">Montserrat</option>
+              <option value="Oswald">Oswald</option>
+              <option value="Titillium Web">Titillium Web</option>
+              <option value="Ubuntu">Ubuntu</option>
+              <option value="Josefin Sans">Josefin Sans</option>
+              <option value="Merriweather">Merriweather</option>
+              <option value="Michroma">Michroma</option>
+              <option value="Bangers">Bangers</option>
+              <option value="Fredoka One">Fredoka One</option>
+              <option value="Luckiest Guy">Luckiest Guy</option>
+              <option value="Permanent Marker">Permanent Marker</option>
+              <option value="Patrick Hand">Patrick Hand</option>
+              <option value="Indie Flower">Indie Flower</option>
+              <option value="Amatic SC">Amatic SC</option>
+              <option value="Kalam">Kalam</option>
+              <option value="Comic Neue Angular">Comic Neue Angular</option>
+              <option value="Creepster">Creepster</option>
+              <option value="Special Elite">Special Elite</option>
+              <option value="Press Start 2P">Press Start 2P</option>
+              <option value="Roman Antique">Roman Antique</option>
+              <option value="Inconsolata">Inconsolata</option>
+              <option value="Sarpanch">Sarpanch</option>
+            </select>
+            <button class="miniBtn" id="applyFont">Apply font</button>
+            <button class="miniBtn" id="removeFont">Remove</button>
+          </div>
+          <div class="row">
+            <label>SIZE (px)</label>
+            <input type="number" id="sizeInput" value="24" min="6" max="200" style="width:70px;">
+            <button class="miniBtn" id="applySize">Apply size</button>
+            <button class="miniBtn" id="removeSize">Remove</button>
+          </div>
+          <div id="editor" contenteditable="true" data-placeholder="Example Text, Red, Green, Blue, Bold, Italics, Underline, Strikethrough" spellcheck="false"></div>
+          <div class="status">
+            <span id="charCount">0 characters selected</span>
+            <span id="totalCount">0 total</span>
+          </div>
+          <div class="row" style="margin-top:16px;">
+            <label>COLOR</label>
+            <input type="color" id="colorPicker" value="#e0361d">
+            <input type="text" id="hexInput" value="#E0361D" style="width:90px;">
+            <button class="miniBtn primary" id="applyColor">Apply color</button>
+            <button class="miniBtn" id="removeColor">Remove color</button>
+          </div>
+          <div class="swatches" id="lastColors">
+            <span class="swatch-label">Last used:</span>
+          </div>
         </div>
       </div>
-
-      <div class="flex flex-col md:flex-row justify-center gap-8">
-        <div class="section-box text-left">
-          <h3 class="text-xl font-semibold mb-2 underline-anim">discord</h3>
-          <div class="box hover-tooltip" data-tooltip="Main Discord">
-            <p class="text-[#d4d4d4]">
-              <span class="discord-name-box">[ SIMPLIFY ]</span
-              ><span class="text-[#a1a1a1]">@strictlysimplify</span>
-              <span class="discord-label-box text-[#a1a1a1] text-sm">main</span>
-            </p>
+      <div class="col-right">
+        <div class="panel">
+          <div class="panel-label">TEXTLABEL PREVIEW</div>
+          <h2>See it as players will</h2>
+          <div class="stage bg-bright" id="stage">
+            <span class="badge">RICHTEXT = TRUE</span>
+            <span class="badge right" id="stageName">BRIGHT</span>
+            <div class="stage-text" id="stageText"></div>
+          </div>
+          <div class="stage-label-row">
+            <span class="panel-label" style="margin:0;">PREVIEW BACKGROUND</span>
+          </div>
+          <div class="stage-swatches">
+            <div class="stageBtn sw-bright selected" data-bg="bg-bright" data-name="BRIGHT" title="Bright"></div>
+            <div class="stageBtn sw-snow" data-bg="bg-snow" data-name="SNOW" title="Snow"></div>
+            <div class="stageBtn sw-night" data-bg="bg-night" data-name="NIGHT" title="Night"></div>
+            <div class="stageBtn sw-nature" data-bg="bg-nature" data-name="NATURE" title="Nature"></div>
+            <div class="stageBtn sw-black" data-bg="bg-black" data-name="BLACK" title="Black"></div>
           </div>
         </div>
-
-        <div class="section-box text-left">
-          <h3 class="text-xl font-semibold mb-2 underline-anim">links</h3>
-          <div class="box hover-tooltip" data-tooltip="Roblox Profile">
-            <a
-              href="https://www.roblox.com/users/3846650902/profile"
-              class="text-[#d4d4d4] underline-anim"
-              target="_blank"
-              rel="noopener noreferrer"
-              >roblox.com/simplify</a
-            >
+        <div class="panel">
+          <div class="panel-label">ROBLOX RICHTEXT CODE</div>
+          <h2>Ready for the Text property</h2>
+          <p class="desc">Enable <b>RichText</b> on your TextLabel, TextButton or TextBox, then paste this into its Text property.</p>
+          <textarea id="output" readonly></textarea>
+          <div class="output-actions">
+            <button class="miniBtn primary" id="copyBtn">Copy code</button>
+            <span class="copied-note" id="copiedNote">Copied to clipboard</span>
           </div>
-          <div class="box hover-tooltip" data-tooltip="Patreon Profile">
-            <a
-              href="https://www.patreon.com/StrictlySimplify"
-              class="text-[#d4d4d4] underline-anim"
-              target="_blank"
-              rel="noopener noreferrer"
-              >patreon.com/strictlysimplify</a
-            >
-          </div>
+          <p class="hint">The Copy button also selects the full code, so Ctrl+C still works if clipboard access is blocked by your browser.</p>
         </div>
       </div>
     </div>
+  </section>
 
-    <audio id="backgroundAudio" loop>
-      <source
-        src="https://cdn.glitch.global/d115bd73-fdbe-47f2-b1ba-ec22e6de85f7/BG_Music.mp3?v=1746742511947"
-        type="audio/mpeg"
-      />
-      Your browser does not support the audio element.
-    </audio>
-
-    <div id="muteBtn">
-      <img
-        id="muteIcon"
-        src="https://tr.rbxcdn.com/180DAY-58e6dc26efdc07910dfe8375656bb235/420/420/Image/Png/noFilter"
-        alt="Unmute"
-      />
+  <section class="page" id="page-audio">
+    <header>
+      <span class="kicker"><span class="dot blue"></span>TOOL 02 · RUNS IN YOUR BROWSER</span>
+      <h1>Roblox Audio <span class="cube">Bypass</span></h1>
+      <p>Slowed a clip down to get it past Roblox's audio moderation? Enter the original length and the slowed length to get the PlaybackSpeed value that restores it to normal speed in-game.</p>
+    </header>
+    <div class="single">
+      <div class="panel">
+        <div class="panel-label">CALCULATE</div>
+        <h2>Enter both lengths</h2>
+        <p class="desc">Use mm:ss (e.g. 3:24) or plain seconds for either field.</p>
+        <div class="av-row">
+          <div class="field">
+            <label>NORMAL LENGTH</label>
+            <input id="avNormal" type="text" placeholder="e.g. 3:24 or 204" inputmode="decimal">
+            <p class="hint">Length of the original, unslowed track.</p>
+          </div>
+          <div class="field">
+            <label>SLOWED LENGTH</label>
+            <input id="avSlowed" type="text" placeholder="e.g. 4:05 or 245" inputmode="decimal">
+            <p class="hint">Length of the file after it was slowed down.</p>
+          </div>
+        </div>
+        <div class="avwave" id="avWaveform"></div>
+        <button class="miniBtn primary block" id="avConvert">Convert</button>
+        <div class="av-error" id="avError"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">RESULT</div>
+        <h2>Set PlaybackSpeed to</h2>
+        <div class="av-result" id="avResult">
+          <div class="value"><span id="avSpeedValue">1.00</span><span class="unit">×</span></div>
+          <p class="explain">Playing the slowed file at <code id="avExplainSpeed">1.00×</code> speed in Roblox will bring it back to <code id="avExplainLength">0:00</code>, matching the original.</p>
+        </div>
+      </div>
     </div>
+  </section>
+</div>
+<script>
+document.querySelectorAll('.tabBtn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tabBtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + btn.dataset.tab).classList.add('active');
+  };
+});
 
-    <script>
-      document.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-      });
+const editor = document.getElementById('editor');
+const output = document.getElementById('output');
+const stageText = document.getElementById('stageText');
+const charCount = document.getElementById('charCount');
+const totalCount = document.getElementById('totalCount');
 
-      const splash = document.getElementById("splash");
-      const content = document.getElementById("content");
-      const audio = document.getElementById("backgroundAudio");
-      const muteBtn = document.getElementById("muteBtn");
-      const muteIcon = document.getElementById("muteIcon");
+editor.innerHTML =
+  'Example Text, ' +
+  '<span style="color:#E0361D;">Red</span>, ' +
+  '<span style="color:#2E9E3F;">Green</span>, ' +
+  '<span style="color:#2A6FD6;">Blue</span>, ' +
+  '<b>Bold</b>, ' +
+  '<i>Italics</i>, ' +
+  '<u>Underline</u>, ' +
+  '<s>Strikethrough</s>.';
 
-      let squareCount = 0;
-      const maxSquares = 20;
+document.execCommand && document.execCommand('styleWithCSS', false, false);
 
-      function createSquare() {
-        if (squareCount >= maxSquares) return;
+function getSelectionRange(){
+  const sel = window.getSelection();
+  if(!sel || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0);
+  if(range.collapsed) return null;
+  if(!editor.contains(range.commonAncestorContainer)) return null;
+  return range;
+}
 
-        const square = document.createElement("div");
-        square.classList.add("square");
-        const size = Math.random() * 50 + 20;
-        square.style.width = `${size}px`;
-        square.style.height = `${size}px`;
-        square.style.left = `${Math.random() * 100}vw`;
-        square.style.animationDuration = `${Math.random() * 5 + 5}s`;
-        square.style.animationDelay = `${Math.random() * 5}s`;
-        document.body.appendChild(square);
+function toggleCmd(cmd){
+  editor.focus();
+  document.execCommand(cmd, false, null);
+  refreshAll();
+}
+document.getElementById('btnBold').onclick = () => toggleCmd('bold');
+document.getElementById('btnItalic').onclick = () => toggleCmd('italic');
+document.getElementById('btnUnderline').onclick = () => toggleCmd('underline');
+document.getElementById('btnStrike').onclick = () => toggleCmd('strikeThrough');
 
-        squareCount++;
+function updateToolbarState(){
+  try{
+    document.getElementById('btnBold').classList.toggle('active', document.queryCommandState('bold'));
+    document.getElementById('btnItalic').classList.toggle('active', document.queryCommandState('italic'));
+    document.getElementById('btnUnderline').classList.toggle('active', document.queryCommandState('underline'));
+    document.getElementById('btnStrike').classList.toggle('active', document.queryCommandState('strikeThrough'));
+  }catch(e){}
+}
 
-        square.addEventListener("animationend", () => {
-          square.remove();
-          squareCount--;
-        });
-      }
+function applyStyleToSelection(styleProp, value){
+  const range = getSelectionRange();
+  if(!range){ flashEditor(); return; }
+  const frag = range.extractContents();
+  const span = document.createElement('span');
+  span.style[styleProp] = value;
+  span.appendChild(frag);
+  range.insertNode(span);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  const newRange = document.createRange();
+  newRange.selectNodeContents(span);
+  sel.addRange(newRange);
+  refreshAll();
+}
 
-      setInterval(createSquare, 1000);
+function removeStyleFromSelection(styleProp){
+  const range = getSelectionRange();
+  if(!range){ flashEditor(); return; }
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ELEMENT);
+  const toClear = [];
+  while(walker.nextNode()){
+    const el = walker.currentNode;
+    if(range.intersectsNode(el) && el.style && el.style[styleProp]){
+      toClear.push(el);
+    }
+  }
+  toClear.forEach(el => {
+    el.style[styleProp] = '';
+    if(!el.getAttribute('style')) el.removeAttribute('style');
+  });
+  refreshAll();
+}
 
-      splash.addEventListener("click", () => {
-        splash.style.opacity = "0";
-        setTimeout(() => {
-          splash.style.display = "none";
-          content.style.opacity = "1";
-          content.style.display = "block";
-          audio.play().catch((error) => {
-            console.log("Audio playback failed:", error);
-          });
-        }, 1000);
-      });
+function flashEditor(){
+  editor.style.borderColor = '#e0361d';
+  setTimeout(()=> editor.style.borderColor = '#14151a', 260);
+}
 
-      muteBtn.addEventListener("click", () => {
-        if (audio.muted) {
-          audio.muted = false;
-          muteIcon.src =
-            "https://tr.rbxcdn.com/180DAY-58e6dc26efdc07910dfe8375656bb235/420/420/Image/Png/noFilter";
-          muteIcon.alt = "Unmute";
-        } else {
-          audio.muted = true;
-          muteIcon.src =
-            "https://tr.rbxcdn.com/180DAY-6eada9d26871f546b3e9081c74cd747b/420/420/Decal/Webp/noFiltered";
-          muteIcon.alt = "Mute";
-        }
-      });
-    </script>
-    <script>
-      (function () {
-        function c() {
-          var b = a.contentDocument || a.contentWindow.document;
-          if (b) {
-            var d = b.createElement("script");
-            d.innerHTML =
-              "window.__CF$cv$params={r:'939a80f94b346747',t:'MTc0NjIyMDIxMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
-            b.getElementsByTagName("head")[0].appendChild(d);
-          }
-        }
-        if (document.body) {
-          var a = document.createElement("iframe");
-          a.height = 1;
-          a.width = 1;
-          a.style.position = "absolute";
-          a.style.top = 0;
-          a.style.left = 0;
-          a.style.border = "none";
-          a.style.visibility = "hidden";
-          document.body.appendChild(a);
-          if ("loading" !== document.readyState) c();
-          else if (window.addEventListener)
-            document.addEventListener("DOMContentLoaded", c);
-          else {
-            var e = document.onreadystatechange || function () {};
-            document.onreadystatechange = function (b) {
-              e(b);
-              "loading" !== document.readyState &&
-                ((document.onreadystatechange = e), c());
-            };
-          }
-        }
-      })();
-    </script>
-  </body>
+const colorPicker = document.getElementById('colorPicker');
+const hexInput = document.getElementById('hexInput');
+const lastColorsWrap = document.getElementById('lastColors');
+let lastColors = [];
+
+colorPicker.addEventListener('input', () => hexInput.value = colorPicker.value.toUpperCase());
+hexInput.addEventListener('change', () => {
+  let v = hexInput.value.trim();
+  if(!v.startsWith('#')) v = '#' + v;
+  if(/^#([0-9A-Fa-f]{6})$/.test(v)){ colorPicker.value = v; hexInput.value = v.toUpperCase(); }
+});
+
+document.getElementById('applyColor').onclick = () => {
+  const hex = hexInput.value;
+  applyStyleToSelection('color', hex);
+  addLastColor(hex);
+};
+document.getElementById('removeColor').onclick = () => removeStyleFromSelection('color');
+
+function addLastColor(hex){
+  hex = hex.toUpperCase();
+  lastColors = [hex, ...lastColors.filter(c => c !== hex)].slice(0, 6);
+  renderLastColors();
+}
+
+function renderLastColors(){
+  lastColorsWrap.innerHTML = '<span class="swatch-label">Last used:</span>';
+  lastColors.forEach(hex => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch';
+    sw.style.background = hex;
+    sw.title = hex;
+    sw.onclick = () => { hexInput.value = hex; colorPicker.value = hex; };
+    lastColorsWrap.appendChild(sw);
+  });
+}
+
+document.getElementById('applySize').onclick = () => {
+  const px = document.getElementById('sizeInput').value || '24';
+  applyStyleToSelection('fontSize', px + 'px');
+};
+document.getElementById('removeSize').onclick = () => removeStyleFromSelection('fontSize');
+
+const ROBLOX_FACE_TO_CSS = {
+  'Source Sans Pro': "'Source Sans Pro', 'Inter', sans-serif",
+  'Builder Sans': "'Inter', sans-serif",
+  'Arimo': "'Arimo', 'Arial', sans-serif",
+  'Roboto': "'Roboto', sans-serif",
+  'Roboto Condensed': "'Roboto Condensed', sans-serif",
+  'Roboto Mono': "'Roboto Mono', monospace",
+  'Montserrat': "'Montserrat', sans-serif",
+  'Oswald': "'Oswald', sans-serif",
+  'Titillium Web': "'Titillium Web', sans-serif",
+  'Ubuntu': "'Ubuntu', sans-serif",
+  'Josefin Sans': "'Josefin Sans', sans-serif",
+  'Merriweather': "'Merriweather', serif",
+  'Michroma': "'Michroma', sans-serif",
+  'Bangers': "'Bangers', cursive",
+  'Fredoka One': "'Fredoka One', cursive",
+  'Luckiest Guy': "'Luckiest Guy', cursive",
+  'Permanent Marker': "'Permanent Marker', cursive",
+  'Patrick Hand': "'Patrick Hand', cursive",
+  'Indie Flower': "'Indie Flower', cursive",
+  'Amatic SC': "'Amatic SC', cursive",
+  'Kalam': "'Kalam', cursive",
+  'Comic Neue Angular': "'Comic Neue', cursive",
+  'Creepster': "'Creepster', cursive",
+  'Special Elite': "'Special Elite', monospace",
+  'Press Start 2P': "'Press Start 2P', monospace",
+  'Roman Antique': "'Merriweather', serif",
+  'Inconsolata': "'Roboto Mono', monospace",
+  'Sarpanch': "'Oswald', sans-serif"
+};
+
+document.getElementById('applyFont').onclick = () => {
+  const face = document.getElementById('fontSelect').value;
+  if(!face) return;
+  const range = getSelectionRange();
+  if(!range){ flashEditor(); return; }
+  const frag = range.extractContents();
+  const span = document.createElement('span');
+  span.setAttribute('data-rbx-face', face);
+  span.style.fontFamily = ROBLOX_FACE_TO_CSS[face] || face;
+  span.appendChild(frag);
+  range.insertNode(span);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  const newRange = document.createRange();
+  newRange.selectNodeContents(span);
+  sel.addRange(newRange);
+  refreshAll();
+};
+
+document.getElementById('removeFont').onclick = () => {
+  const range = getSelectionRange();
+  if(!range){ flashEditor(); return; }
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ELEMENT);
+  const toClear = [];
+  while(walker.nextNode()){
+    const el = walker.currentNode;
+    if(range.intersectsNode(el) && el.hasAttribute('data-rbx-face')){
+      toClear.push(el);
+    }
+  }
+  toClear.forEach(el => {
+    el.removeAttribute('data-rbx-face');
+    el.style.fontFamily = '';
+    if(!el.getAttribute('style')) el.removeAttribute('style');
+  });
+  refreshAll();
+};
+
+const stage = document.getElementById('stage');
+const stageName = document.getElementById('stageName');
+document.querySelectorAll('.stageBtn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.stageBtn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    stage.className = 'stage ' + btn.dataset.bg;
+    stageName.textContent = btn.dataset.name;
+  };
+});
+
+function escapeRbx(str){
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function collectLeaves(node, style){
+  let leaves = [];
+  if(node.nodeType === Node.TEXT_NODE){
+    if(node.textContent.length) leaves.push({ text: node.textContent, ...style });
+    return leaves;
+  }
+  if(node.nodeType !== Node.ELEMENT_NODE) return leaves;
+  const tag = node.tagName;
+  if(tag === 'BR'){ leaves.push({ br: true }); return leaves; }
+  const next = { ...style };
+  if(tag === 'B' || tag === 'STRONG') next.bold = true;
+  if(tag === 'I' || tag === 'EM') next.italic = true;
+  if(tag === 'U') next.underline = true;
+  if(tag === 'STRIKE' || tag === 'S' || tag === 'DEL') next.strike = true;
+  if(node.getAttribute && node.getAttribute('data-rbx-face')) next.font = node.getAttribute('data-rbx-face');
+  if(node.style){
+    if(node.style.color) next.color = rgbToHex(node.style.color);
+    if(node.style.fontSize) next.size = parseInt(node.style.fontSize);
+    const fw = node.style.fontWeight;
+    if(fw && (fw === 'bold' || parseInt(fw) >= 700)) next.bold = true;
+    if(node.style.fontStyle === 'italic') next.italic = true;
+    const td = node.style.textDecorationLine || node.style.textDecoration || '';
+    if(td.includes('underline')) next.underline = true;
+    if(td.includes('line-through')) next.strike = true;
+  }
+  if(tag === 'FONT' && node.color) next.color = rgbToHex(node.color);
+  node.childNodes.forEach(child => {
+    leaves = leaves.concat(collectLeaves(child, next));
+  });
+  return leaves;
+}
+
+function rgbToHex(c){
+  if(!c) return null;
+  if(c.startsWith('#')) return c.toUpperCase();
+  const m = c.match(/\d+/g);
+  if(!m) return null;
+  return '#' + m.slice(0,3).map(n => parseInt(n).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
+function buildLeafList(){
+  let leaves = [];
+  const children = Array.from(editor.childNodes);
+  if(children.length === 0) return leaves;
+  const isLineNode = n => n.nodeType === Node.ELEMENT_NODE && (n.tagName === 'DIV' || n.tagName === 'P');
+  const hasLineNodes = children.some(isLineNode);
+  if(!hasLineNodes){
+    leaves = collectLeaves(editor, {});
+  } else {
+    children.forEach((child, idx) => {
+      if(idx > 0) leaves.push({ br: true });
+      leaves = leaves.concat(collectLeaves(child, {}));
+    });
+  }
+  return leaves;
+}
+
+function sameStyle(a, b){
+  return a.bold===b.bold && a.italic===b.italic && a.underline===b.underline &&
+         a.strike===b.strike && a.color===b.color && a.size===b.size && a.font===b.font;
+}
+
+function mergeLeaves(leaves){
+  const merged = [];
+  leaves.forEach(l => {
+    if(l.br){ merged.push({ br: true }); return; }
+    const last = merged[merged.length - 1];
+    if(last && !last.br && sameStyle(last, l)){
+      last.text += l.text;
+    } else {
+      merged.push({ ...l });
+    }
+  });
+  return merged;
+}
+
+function leafToMarkup(leaf){
+  let inner = escapeRbx(leaf.text);
+  if(leaf.underline) inner = `<u>${inner}</u>`;
+  if(leaf.italic) inner = `<i>${inner}</i>`;
+  if(leaf.strike) inner = `<s>${inner}</s>`;
+  if(leaf.bold) inner = `<b>${inner}</b>`;
+  if(leaf.color || leaf.size || leaf.font){
+    let attrs = '';
+    if(leaf.color) attrs += ` color="${leaf.color}"`;
+    if(leaf.size) attrs += ` size="${leaf.size}"`;
+    if(leaf.font) attrs += ` face="${leaf.font}"`;
+    inner = `<font${attrs}>${inner}</font>`;
+  }
+  return inner;
+}
+
+function generateMarkup(){
+  const leaves = mergeLeaves(buildLeafList());
+  return leaves.map(l => l.br ? '<br/>' : leafToMarkup(l)).join('');
+}
+
+function refreshAll(){
+  const markup = generateMarkup();
+  output.value = markup;
+  stageText.innerHTML = editor.innerHTML;
+  totalCount.textContent = (editor.textContent || '').length + ' total';
+  updateToolbarState();
+}
+
+editor.addEventListener('input', refreshAll);
+editor.addEventListener('keyup', () => { updateCharCount(); updateToolbarState(); });
+editor.addEventListener('mouseup', () => { updateCharCount(); updateToolbarState(); });
+document.addEventListener('selectionchange', () => {
+  if(document.activeElement === editor) updateCharCount();
+});
+
+function updateCharCount(){
+  const sel = window.getSelection();
+  if(sel && sel.toString().length && editor.contains(sel.anchorNode)){
+    charCount.textContent = sel.toString().length + ' characters selected';
+  } else {
+    charCount.textContent = '0 characters selected';
+  }
+}
+
+document.getElementById('copyBtn').onclick = () => {
+  output.select();
+  output.setSelectionRange(0, output.value.length);
+  try{
+    navigator.clipboard.writeText(output.value);
+  }catch(e){
+    try{ document.execCommand('copy'); }catch(e2){}
+  }
+  const note = document.getElementById('copiedNote');
+  note.classList.add('show');
+  setTimeout(() => note.classList.remove('show'), 1400);
+};
+
+renderLastColors();
+addLastColor('#E0361D');
+addLastColor('#2E9E3F');
+addLastColor('#2A6FD6');
+refreshAll();
+
+const avWaveform = document.getElementById('avWaveform');
+const AV_BAR_COUNT = 34;
+for(let i=0;i<AV_BAR_COUNT;i++){
+  const b = document.createElement('div');
+  b.className = 'bar';
+  b.style.height = (6 + Math.random()*32) + 'px';
+  avWaveform.appendChild(b);
+}
+const avBars = Array.from(avWaveform.querySelectorAll('.bar'));
+
+function avParseLength(str){
+  str = (str || '').trim();
+  if(!str) return null;
+  if(str.includes(':')){
+    const parts = str.split(':').map(p => p.trim());
+    if(parts.length !== 2) return null;
+    const mins = parseFloat(parts[0]);
+    const secs = parseFloat(parts[1]);
+    if(isNaN(mins) || isNaN(secs)) return null;
+    return mins*60 + secs;
+  }
+  const val = parseFloat(str);
+  return isNaN(val) ? null : val;
+}
+
+function avFormatLength(totalSeconds){
+  const m = Math.floor(totalSeconds/60);
+  const s = totalSeconds - m*60;
+  return m + ':' + (s<10?'0':'') + s.toFixed(1);
+}
+
+const avNormalInput = document.getElementById('avNormal');
+const avSlowedInput = document.getElementById('avSlowed');
+const avErrorBox = document.getElementById('avError');
+const avResultBox = document.getElementById('avResult');
+const avSpeedValue = document.getElementById('avSpeedValue');
+const avExplainSpeed = document.getElementById('avExplainSpeed');
+const avExplainLength = document.getElementById('avExplainLength');
+
+function avShowError(msg){
+  avErrorBox.textContent = msg;
+  avErrorBox.classList.add('show');
+  avResultBox.classList.remove('show');
+  avBars.forEach(b => b.classList.remove('active'));
+}
+
+function avConvert(){
+  const normal = avParseLength(avNormalInput.value);
+  const slowed = avParseLength(avSlowedInput.value);
+  if(normal === null || slowed === null){
+    avShowError('Enter both lengths as mm:ss (e.g. 3:24) or plain seconds.');
+    return;
+  }
+  if(normal <= 0 || slowed <= 0){
+    avShowError('Lengths need to be greater than zero.');
+    return;
+  }
+  avErrorBox.classList.remove('show');
+  const speed = slowed / normal;
+  const speedStr = speed.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
+  avSpeedValue.textContent = speedStr;
+  avExplainSpeed.textContent = speedStr + '×';
+  avExplainLength.textContent = avFormatLength(normal);
+  avResultBox.classList.add('show');
+  const activeCount = Math.round(avBars.length * Math.min(speed, 2) / 2);
+  avBars.forEach((b, i) => {
+    b.classList.toggle('active', i < activeCount);
+  });
+}
+
+document.getElementById('avConvert').addEventListener('click', avConvert);
+[avNormalInput, avSlowedInput].forEach(inp => {
+  inp.addEventListener('keydown', e => {
+    if(e.key === 'Enter') avConvert();
+  });
+});
+</script>
+</body>
 </html>
