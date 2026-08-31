@@ -216,6 +216,7 @@
     background-size:cover;
     background-position:center;
     background-repeat:no-repeat;
+    background-color:#1a1a1e;
   }
   .stage .badge{
     position:absolute;top:8px;left:10px;
@@ -239,6 +240,7 @@
   .stageBtn{
     width:56px;height:36px;border:2px solid var(--line);cursor:pointer;position:relative;
     background-size:cover;background-position:center;background-repeat:no-repeat;
+    background-color:#d8d4c8;
   }
   .stageBtn.selected{outline:3px solid var(--accent);outline-offset:2px;}
   .stage-label-row{display:flex;justify-content:space-between;align-items:center;margin-top:4px;}
@@ -383,7 +385,7 @@
         <div class="panel">
           <div class="panel-label">TEXTLABEL PREVIEW</div>
           <h2>See it as players will</h2>
-          <div class="stage" id="stage" style="background-image:url(Backgrounds/Background1.png)">
+          <div class="stage" id="stage">
             <span class="badge">RICHTEXT = TRUE</span>
             <span class="badge right" id="stageName">GLOWING RUINS</span>
             <div class="stage-text" id="stageText"></div>
@@ -682,27 +684,59 @@ const stage = document.getElementById('stage');
 const stageName = document.getElementById('stageName');
 const stageSwatches = document.getElementById('stageSwatches');
 
-const BACKGROUNDS = [
-  { file: 'Backgrounds/Background1.png', name: 'GLOWING RUINS' },
-  { file: 'Backgrounds/Background2.png', name: 'BRIGHT CITY' },
-  { file: 'Backgrounds/Background3.png', name: 'CALM TEMPLE' },
-  { file: 'Backgrounds/Background4.png', name: 'SUNNY ISLAND' },
-  { file: 'Backgrounds/Background5.png', name: 'GIANT CASTLE' },
-  { file: 'Backgrounds/Background6.png', name: 'ARENA' }
+const BG_NAMES = [
+  'GLOWING RUINS',
+  'BRIGHT CITY',
+  'CALM TEMPLE',
+  'SUNNY ISLAND',
+  'GIANT CASTLE',
+  'ARENA'
 ];
 
-BACKGROUNDS.forEach((bg, i) => {
+const EXT_CANDIDATES = ['png', 'jpg', 'jpeg', 'webp'];
+
+function resolveBgUrl(index, onFound) {
+  const base = 'Backgrounds/Background' + (index + 1);
+  let i = 0;
+  function tryNext() {
+    if (i >= EXT_CANDIDATES.length) {
+      onFound(null);
+      return;
+    }
+    const url = base + '.' + EXT_CANDIDATES[i++];
+    const img = new Image();
+    img.onload = function () { onFound(url); };
+    img.onerror = tryNext;
+    img.src = url;
+  }
+  tryNext();
+}
+
+BG_NAMES.forEach((name, index) => {
   const btn = document.createElement('div');
-  btn.className = 'stageBtn' + (i === 0 ? ' selected' : '');
-  btn.style.backgroundImage = 'url(' + bg.file + ')';
-  btn.title = bg.name;
-  btn.onclick = () => {
+  btn.className = 'stageBtn' + (index === 0 ? ' selected' : '');
+  btn.title = name;
+  btn.dataset.index = index;
+  stageSwatches.appendChild(btn);
+
+  resolveBgUrl(index, function (url) {
+    if (url) {
+      btn.style.backgroundImage = 'url(' + url + ')';
+      if (index === 0) {
+        stage.style.backgroundImage = 'url(' + url + ')';
+        stageName.textContent = name;
+      }
+    }
+  });
+
+  btn.onclick = function () {
     document.querySelectorAll('.stageBtn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
-    stage.style.backgroundImage = 'url(' + bg.file + ')';
-    stageName.textContent = bg.name;
+    stageName.textContent = name;
+    resolveBgUrl(index, function (url) {
+      if (url) stage.style.backgroundImage = 'url(' + url + ')';
+    });
   };
-  stageSwatches.appendChild(btn);
 });
 
 function escapeRbx(str){
