@@ -213,6 +213,9 @@
     overflow:hidden;
     display:flex;align-items:center;justify-content:center;
     margin-bottom:12px;
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
   }
   .stage .badge{
     position:absolute;top:8px;left:10px;
@@ -232,33 +235,12 @@
     max-width:90%;
   }
   .stage-text:empty:before{content:"Your text will appear here";opacity:.7;font-size:18px;font-family:'Inter',sans-serif;}
-  .bg-bright{background:linear-gradient(#7fd6f2,#bdeaa4 62%,#5fae3a 62%);}
-  .bg-bright:after{content:"";position:absolute;inset:0;background:
-    repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 24px, transparent 24px 48px) bottom/100% 40% no-repeat;}
-  .bg-snow{background:linear-gradient(#c9d9ea,#eef3f8 55%,#ffffff 55%);}
-  .bg-snow:after{content:"";position:absolute;inset:0;background:
-    repeating-linear-gradient(90deg, rgba(0,0,0,.04) 0 20px, transparent 20px 40px) bottom/100% 45% no-repeat;}
-  .bg-night{background:linear-gradient(#141a3d,#2a2160 55%,#100a26 55%);}
-  .bg-night:after{content:"";position:absolute;inset:0;background:
-    radial-gradient(2px 2px at 20% 20%, #fff, transparent),
-    radial-gradient(2px 2px at 70% 15%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 40% 35%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 85% 40%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 55% 10%, #fff, transparent);}
-  .bg-nature{background:linear-gradient(#bfe3c6,#e8dfc2 50%,#c9a86b 50%);}
-  .bg-nature:after{content:"";position:absolute;inset:0;background:
-    repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 18px, transparent 18px 36px) bottom/100% 50% no-repeat;}
-  .bg-black{background:#0c0c0e;}
   .stage-swatches{display:flex;gap:8px;flex-wrap:wrap;}
   .stageBtn{
-    width:42px;height:30px;border:2px solid var(--line);cursor:pointer;position:relative;
+    width:56px;height:36px;border:2px solid var(--line);cursor:pointer;position:relative;
+    background-size:cover;background-position:center;background-repeat:no-repeat;
   }
   .stageBtn.selected{outline:3px solid var(--accent);outline-offset:2px;}
-  .stageBtn.sw-bright{background:linear-gradient(#7fd6f2,#5fae3a 60%);}
-  .stageBtn.sw-snow{background:linear-gradient(#c9d9ea,#fff 60%);}
-  .stageBtn.sw-night{background:linear-gradient(#141a3d,#100a26 60%);}
-  .stageBtn.sw-nature{background:linear-gradient(#bfe3c6,#c9a86b 60%);}
-  .stageBtn.sw-black{background:#0c0c0e;}
   .stage-label-row{display:flex;justify-content:space-between;align-items:center;margin-top:4px;}
   #output{
     width:100%;
@@ -401,21 +383,15 @@
         <div class="panel">
           <div class="panel-label">TEXTLABEL PREVIEW</div>
           <h2>See it as players will</h2>
-          <div class="stage bg-bright" id="stage">
+          <div class="stage" id="stage" style="background-image:url(Backgrounds/Background1.png)">
             <span class="badge">RICHTEXT = TRUE</span>
-            <span class="badge right" id="stageName">BRIGHT</span>
+            <span class="badge right" id="stageName">GLOWING RUINS</span>
             <div class="stage-text" id="stageText"></div>
           </div>
           <div class="stage-label-row">
             <span class="panel-label" style="margin:0;">PREVIEW BACKGROUND</span>
           </div>
-          <div class="stage-swatches">
-            <div class="stageBtn sw-bright selected" data-bg="bg-bright" data-name="BRIGHT" title="Bright"></div>
-            <div class="stageBtn sw-snow" data-bg="bg-snow" data-name="SNOW" title="Snow"></div>
-            <div class="stageBtn sw-night" data-bg="bg-night" data-name="NIGHT" title="Night"></div>
-            <div class="stageBtn sw-nature" data-bg="bg-nature" data-name="NATURE" title="Nature"></div>
-            <div class="stageBtn sw-black" data-bg="bg-black" data-name="BLACK" title="Black"></div>
-          </div>
+          <div class="stage-swatches" id="stageSwatches"></div>
         </div>
         <div class="panel">
           <div class="panel-label">ROBLOX RICHTEXT CODE</div>
@@ -529,6 +505,18 @@ function updateToolbarState(){
 function applyStyleToSelection(styleProp, value){
   const range = getSelectionRange();
   if(!range){ flashEditor(); return; }
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ELEMENT);
+  const toClear = [];
+  while(walker.nextNode()){
+    const el = walker.currentNode;
+    if(range.intersectsNode(el) && el.style && el.style[styleProp]){
+      toClear.push(el);
+    }
+  }
+  toClear.forEach(el => {
+    el.style[styleProp] = '';
+    if(!el.getAttribute('style')) el.removeAttribute('style');
+  });
   const frag = range.extractContents();
   const span = document.createElement('span');
   span.style[styleProp] = value;
@@ -644,6 +632,19 @@ document.getElementById('applyFont').onclick = () => {
   if(!face) return;
   const range = getSelectionRange();
   if(!range){ flashEditor(); return; }
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ELEMENT);
+  const toClear = [];
+  while(walker.nextNode()){
+    const el = walker.currentNode;
+    if(range.intersectsNode(el) && el.hasAttribute('data-rbx-face')){
+      toClear.push(el);
+    }
+  }
+  toClear.forEach(el => {
+    el.removeAttribute('data-rbx-face');
+    el.style.fontFamily = '';
+    if(!el.getAttribute('style')) el.removeAttribute('style');
+  });
   const frag = range.extractContents();
   const span = document.createElement('span');
   span.setAttribute('data-rbx-face', face);
@@ -679,13 +680,29 @@ document.getElementById('removeFont').onclick = () => {
 
 const stage = document.getElementById('stage');
 const stageName = document.getElementById('stageName');
-document.querySelectorAll('.stageBtn').forEach(btn => {
+const stageSwatches = document.getElementById('stageSwatches');
+
+const BACKGROUNDS = [
+  { file: 'Backgrounds/Background1.png', name: 'GLOWING RUINS' },
+  { file: 'Backgrounds/Background2.png', name: 'BRIGHT CITY' },
+  { file: 'Backgrounds/Background3.png', name: 'CALM TEMPLE' },
+  { file: 'Backgrounds/Background4.png', name: 'SUNNY ISLAND' },
+  { file: 'Backgrounds/Background5.png', name: 'GIANT CASTLE' },
+  { file: 'Backgrounds/Background6.png', name: 'ARENA' }
+];
+
+BACKGROUNDS.forEach((bg, i) => {
+  const btn = document.createElement('div');
+  btn.className = 'stageBtn' + (i === 0 ? ' selected' : '');
+  btn.style.backgroundImage = 'url(' + bg.file + ')';
+  btn.title = bg.name;
   btn.onclick = () => {
     document.querySelectorAll('.stageBtn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
-    stage.className = 'stage ' + btn.dataset.bg;
-    stageName.textContent = btn.dataset.name;
+    stage.style.backgroundImage = 'url(' + bg.file + ')';
+    stageName.textContent = bg.name;
   };
+  stageSwatches.appendChild(btn);
 });
 
 function escapeRbx(str){
